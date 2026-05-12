@@ -21,21 +21,23 @@ US2_ECHO_DIGITAL = 10
 MAX_TIME_BETWEEN_US1_US2_DETECTIONS = 5
 DETECTION_DISTANCE_MAX = 10
 
+SUBSYSTEM4_DETECTION_PIN = 11
+
 dayDetectedTimeAdd = True
 
-trafficLightSequenceStarting1 =0
+trafficLightSequenceTime1 =0
 trafficLightSequenceRunning1 ={
     "Sequence0": False , 
     "Sequence1": False
 }
 
-trafficLightSequenceStarting2 =0
+trafficLightSequenceTime2 =0
 trafficLightSequenceRunning2 ={
     "Sequence0": False , 
     "Sequence1": False
 }
 
-trafficLightSequenceStarting6 = 0
+trafficLightSequenceTime6 = 0
 trafficLightSequenceRunning6 ={
     "Sequence0": False , 
     "Sequence1": False
@@ -123,7 +125,7 @@ board.set_pin_mode_sonar(US2_TRIG_DIGITAL, US2_ECHO_DIGITAL, callback_US2)
 
 time.sleep(0.5)
 
-
+board.set_pin_mode_analog_input(5)
 
 
 shiftRegisterStateStorage = [1,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0]
@@ -162,7 +164,7 @@ def shift_register_change_state(outputToChange):
 
 
 def traffic_light_sequence_6(sequenceToRun):
-    global trafficLightSequenceStarting6
+    global trafficLightSequenceTime6
     global trafficLightSequenceRunning6
 
     #print(dayDetectedTimeAdd)
@@ -170,7 +172,7 @@ def traffic_light_sequence_6(sequenceToRun):
         case 0:
             if(trafficLightSequenceRunning6["Sequence0"] == False):
                # print("INIF1")
-                trafficLightSequenceStarting6 = time.time()
+                trafficLightSequenceTime6 = time.time()
                 trafficLightSequenceRunning6["Sequence0"]  = True
                 shift_register_change_state(2)
                 shift_register_change_state(0)
@@ -191,7 +193,7 @@ def traffic_light_sequence_6(sequenceToRun):
                     if(shiftRegisterStateStorage[5] == 0):
                         shift_register_change_state(5)
 
-                    trafficLightSequenceStarting6 = time.time() - 5 - dayDetectedTimeAdd
+                    trafficLightSequenceTime6 = time.time() - 5 - dayDetectedTimeAdd
                 else:
                     trafficLightSequenceRunning6["Sequence1"] = True
 
@@ -215,7 +217,7 @@ def traffic_light_sequence_6(sequenceToRun):
             shift_register_change_state(0)
             trafficLightSequenceRunning6["Sequence0"] = False
             trafficLightSequenceRunning6["Sequence1"] = False
-            trafficLightSequenceStarting6 =0
+            trafficLightSequenceTime6 = 0
   
 
 def detection_distance_input_handler():
@@ -230,13 +232,13 @@ def detection_distance_input_handler():
         DETECTION_DISTANCE_MAX = 10
 
 def traffic_light_sequence_1(sequenceToRun):
-    global trafficLightSequenceStarting1
+    global trafficLightSequenceTime1
     global trafficLightSequenceRunning1
 
     match(sequenceToRun):
         case 0:
             if(trafficLightSequenceRunning1["Sequence0"] == False):
-                trafficLightSequenceStarting1 = time.time()  
+                trafficLightSequenceTime1 = time.time()  
                 trafficLightSequenceRunning1["Sequence0"] = True
                 shift_register_change_state(8)
                 shift_register_change_state(7)
@@ -252,17 +254,17 @@ def traffic_light_sequence_1(sequenceToRun):
             if(distanceUS2 < DETECTION_DISTANCE_MAX):
                 if(shiftRegisterStateStorage[15] == 0):
                     shift_register_change_state(15)
-                trafficLightSequenceStarting1 = time.time() - 31
+                trafficLightSequenceTime1 = time.time() - 31
             else:
                 shift_register_change_state(6)
                 shift_register_change_state(8)
-                trafficLightSequenceStarting1 = 0     
+                trafficLightSequenceTime1 = 0     
                 trafficLightSequenceRunning1["Sequence0"] = False
                 trafficLightSequenceRunning1["Sequence1"] = False
             
  
 def traffic_light_sequence_2(sequenceToRun):
-    global trafficLightSequenceStarting2
+    global trafficLightSequenceTime2
     global trafficLightSequenceRunning2
 
 
@@ -270,7 +272,7 @@ def traffic_light_sequence_2(sequenceToRun):
         case 0:
             if(trafficLightSequenceRunning2["Sequence0"] == False):
                 #print("Case1")
-                trafficLightSequenceStarting2 = time.time()  
+                trafficLightSequenceTime2 = time.time()  
                 trafficLightSequenceRunning2["Sequence0"] = True
                 shift_register_change_state(11)
                 shift_register_change_state(10)
@@ -287,12 +289,12 @@ def traffic_light_sequence_2(sequenceToRun):
             if(distanceUS2 < DETECTION_DISTANCE_MAX):
                 if(shiftRegisterStateStorage[15] == 0):
                     shift_register_change_state(15)
-                trafficLightSequenceStarting2 = time.time() - 31
+                trafficLightSequenceTime2 = time.time() - 31
             else:
 
                 shift_register_change_state(9)
                 shift_register_change_state(11)
-                trafficLightSequenceStarting2 = 0     
+                trafficLightSequenceTime2 = 0     
                 trafficLightSequenceRunning2["Sequence0"] = False
                 trafficLightSequenceRunning2["Sequence1"] = False
    
@@ -325,14 +327,16 @@ def turn_off_PA():
 
 def main():
     global DETECTION_DISTANCE_MAX
-    global trafficLightSequenceStarting1
+    global trafficLightSequenceTime1
     global trafficLightSequenceRunning1
-    global trafficLightSequenceStarting2
+    global trafficLightSequenceTime2
     global trafficLightSequenceRunning2
-    global trafficLightSequenceStarting6
+    global trafficLightSequenceTime6
     global trafficLightSequenceRunning6
 
     lastFlashTime = 0
+
+   
 
 
     print("Executing")
@@ -344,14 +348,17 @@ def main():
         while(True):
             time.time()
 
+            print(board.analog_read(5))
+            
+
             #Logic if same vehicle between US1 and US2
-            traffic_light_sequence_segmented(trafficLightSequenceRunning2, trafficLightSequenceStarting2, time.time(), distanceUS2, 1,100,31,100,traffic_light_sequence_2, DETECTION_DISTANCE_MAX)
+            traffic_light_sequence_segmented(trafficLightSequenceRunning2, trafficLightSequenceTime2, time.time(), distanceUS2, 1,100,31,100,traffic_light_sequence_2, DETECTION_DISTANCE_MAX)
                     
             #TL1 Logic 
-            traffic_light_sequence_segmented(trafficLightSequenceRunning1, trafficLightSequenceStarting1, time.time(), distanceUS1, 1,100,31,100,traffic_light_sequence_1, distanceUS2)
+            traffic_light_sequence_segmented(trafficLightSequenceRunning1, trafficLightSequenceTime1, time.time(), distanceUS1, 1,100,31,100,traffic_light_sequence_1, distanceUS2)
 
             #TL6 Logic
-            traffic_light_sequence_segmented(trafficLightSequenceRunning6, trafficLightSequenceStarting6, time.time(), distanceUS5, 5 +dayDetectedTimeAdd,100 +dayDetectedTimeAdd,8 +dayDetectedTimeAdd,100 +dayDetectedTimeAdd,traffic_light_sequence_6, DETECTION_DISTANCE_MAX)
+            traffic_light_sequence_segmented(trafficLightSequenceRunning6, trafficLightSequenceTime6, time.time(), distanceUS5, 5 +dayDetectedTimeAdd,100 +dayDetectedTimeAdd,8 +dayDetectedTimeAdd,100 +dayDetectedTimeAdd,traffic_light_sequence_6, DETECTION_DISTANCE_MAX)
             
             if(( trafficLightSequenceRunning1["Sequence0"] or trafficLightSequenceRunning2["Sequence0"]) and shiftRegisterStateStorage[8] == 0 and shiftRegisterStateStorage[11] ==0):
                 if time.time() - lastFlashTime >= 0.25:
